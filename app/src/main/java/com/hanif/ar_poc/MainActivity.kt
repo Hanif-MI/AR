@@ -1,7 +1,9 @@
 package com.hanif.ar_poc
 
 import android.graphics.Bitmap
+import android.media.CamcorderProfile
 import android.os.Bundle
+import android.util.Log
 import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -16,6 +18,7 @@ import androidx.compose.foundation.layout.systemBarsPadding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Button
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
@@ -39,6 +42,7 @@ import com.google.ar.core.Config
 import com.google.ar.core.Frame
 import com.google.ar.core.Plane
 import com.google.ar.core.TrackingFailureReason
+import com.hanif.ar_poc.helpers.VideoRecorder
 import com.hanif.ar_poc.helpers.captureImage
 import com.hanif.ar_poc.ui.theme.ARPOCTheme
 import io.github.sceneview.ar.ARScene
@@ -62,15 +66,13 @@ import io.github.sceneview.rememberNodes
 import io.github.sceneview.rememberOnGestureListener
 import io.github.sceneview.rememberView
 
-//private const val kModelFile = "models/damaged_helmet.glb"
 private const val kModelFile = "models/anim.glb"
 private const val kMaxModelInstances = 10
 
 class MainActivity : ComponentActivity() {
-
+    private var videoRecorder: VideoRecorder? = null
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-
         setContent {
             ARPOCTheme {
 
@@ -128,7 +130,7 @@ class MainActivity : ComponentActivity() {
                             onTrackingFailureChanged = {
                                 trackingFailureReason = it
                             },
-                            onSessionUpdated = { session, updatedFrame ->
+                            onSessionUpdated = { _, updatedFrame ->
                                 frame = updatedFrame
 
                                 if (childNodes.isEmpty()) {
@@ -180,13 +182,12 @@ class MainActivity : ComponentActivity() {
                             textAlign = TextAlign.Center,
                             fontSize = 28.sp,
                             color = Color.White,
-                            text = trackingFailureReason?.let {
-                                it.getDescription(LocalContext.current)
-                            } ?: if (childNodes.isEmpty()) {
-                                stringResource(R.string.point_your_phone_down)
-                            } else {
-                                stringResource(R.string.tap_anywhere_to_add_model)
-                            }
+                            text = trackingFailureReason?.getDescription(LocalContext.current)
+                                ?: if (childNodes.isEmpty()) {
+                                    stringResource(R.string.point_your_phone_down)
+                                } else {
+                                    stringResource(R.string.tap_anywhere_to_add_model)
+                                }
                         )
                     }
 
@@ -194,6 +195,33 @@ class MainActivity : ComponentActivity() {
                         ImageAlertDialog(imageBitmap = imageBitmap) {
                             showDialog = false
                         }
+                    }
+
+                    /*ScreenRecorderUI(
+                        viewModel = viewModel,
+                        onClickFunction = { onClickToggleRecording() }
+                    )*/
+
+                    Button(onClick = {
+                        if (videoRecorder == null) {
+                            videoRecorder = VideoRecorder()
+                            videoRecorder?.apply {
+                                setSceneView(arSceneView)
+                                setVideoQuality(
+                                    CamcorderProfile.QUALITY_HIGH,
+                                    resources.configuration.orientation
+                                )
+                            }
+                        }
+
+                        val message =
+                            if (videoRecorder!!.onToggleRecord()) "Start Recording" else videoRecorder!!.videoPath.toString()
+                        Toast.makeText(this@MainActivity, message, Toast.LENGTH_SHORT)
+                            .show()
+
+                        Log.e("TAG", "onCreate: $message")
+                    }, modifier = Modifier.padding(bottom = 50.dp)) {
+                        Text("Record")
                     }
 
                     Icon(
